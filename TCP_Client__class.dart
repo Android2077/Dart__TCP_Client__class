@@ -2248,7 +2248,7 @@ class TCP_Client__class
 
 
   //----------------------------------------------------------------------------------------------------------------------
-  Future<void> close_Socket__Sync(Socket_Struct? Socket_Struct_ref, bool flush_flag, bool erase_socket_flag)async
+  Future<void> close_Socket(Socket_Struct? Socket_Struct_ref, bool flush_flag, bool erase_socket_flag)async
   {
 
       if(Socket_Struct_ref!._socket_close == false)
@@ -2289,7 +2289,7 @@ class TCP_Client__class
         } catch (error)
         {
           //------------------------------------------------------------
-          destroy_Socket__Sync(Socket_Struct_ref!, true);                        //Уничтожаем Сокет.
+          destroy_Socket(Socket_Struct_ref!, true);                        //Уничтожаем Сокет.
           //------------------------------------------------------------
 
           _User_Shared_lambda_error(this, null, error.toString());             //Оповещаем Пользователя об ошибке.
@@ -2300,7 +2300,7 @@ class TCP_Client__class
       return null;
   }
 
-  Future<void> close_AllSocket__Sync(bool flush_flag, bool erase_socket_flag)async
+  Future<void> close_AllSocket(bool flush_flag, bool erase_socket_flag)async
   {
 
     List<STD_LIST_Iterator<Socket_Struct>>List_Iterator_Copy = [];
@@ -2321,13 +2321,13 @@ class TCP_Client__class
 
      for(int i = 0; i < List_Iterator_Copy.length; i++)
      {
-       await close_Socket__Sync(List_Iterator_Copy[i].get__value(), flush_flag, erase_socket_flag);
+       await close_Socket(List_Iterator_Copy[i].get__value(), flush_flag, erase_socket_flag);
      }
     //------------------------------------------------------------
 
   }
 
-  Future<void> destroy_Socket__Sync(Socket_Struct? Socket_Struct_ref, bool erase_socket_flag)async
+  Future<void> destroy_Socket(Socket_Struct? Socket_Struct_ref, bool erase_socket_flag)async
   {
 
     //-------------------------------------------------------------
@@ -2359,7 +2359,7 @@ class TCP_Client__class
 
   }
 
-  Future<void> destroy_AllSocket__Sync(bool erase_socket_flag) async
+  Future<void> destroy_AllSocket(bool erase_socket_flag) async
   {
 
     List<STD_LIST_Iterator<Socket_Struct>>List_Iterator_Copy = [];
@@ -2380,7 +2380,7 @@ class TCP_Client__class
 
     for(int i = 0; i < List_Iterator_Copy.length; i++)
     {
-      await destroy_Socket__Sync(List_Iterator_Copy[i].get__value(), erase_socket_flag);
+      await destroy_Socket(List_Iterator_Copy[i].get__value(), erase_socket_flag);
 
     }
     //------------------------------------------------------------
@@ -2398,7 +2398,7 @@ class TCP_Client__class
     {
       //Значит Пользователь не закрыл сокет, закроем его и только потом вызовем новый Connect.
 
-      await close_Socket__Sync(Socket_Struct_, false, false);
+      await close_Socket(Socket_Struct_, false, false);
     }
     //-------------------------------------------------------------------
 
@@ -2417,7 +2417,7 @@ class TCP_Client__class
       //------------------------------------------------------------
       _User_Shared_lambda_error(this, Socket_Struct_, e.toString());             //Оповещаем Пользователя об ошибке.
 
-      destroy_Socket__Sync(Socket_Struct_, true);                               //Уничтожаем Сокет.
+      destroy_Socket(Socket_Struct_, true);                               //Уничтожаем Сокет.
       //------------------------------------------------------------
 
     });
@@ -2494,7 +2494,7 @@ class TCP_Client__class
     {
       _User_Shared_lambda_error(this, Socket_Struct__ref, e.toString());
 
-      destroy_Socket__Sync(Socket_Struct__ref, true);                         //Уничтожаем Сокет.
+      destroy_Socket(Socket_Struct__ref, true);                         //Уничтожаем Сокет.
     }
     //--------------------------------------------------------------------------
 
@@ -2600,7 +2600,7 @@ class TCP_Client__class
           //Вызовем закрытие сокета на всякий случай:
 
 
-          await close_Socket__Sync(Socket_Struct_, false, false);
+          await close_Socket(Socket_Struct_, false, false);
 
             //--------------------------------------------------------------------
             if (_User_Shared_lambda_for_ConnectionStatus != null)
@@ -2752,6 +2752,9 @@ class TCP_Client__class
 
         }
 
+
+
+
       }
 
     }
@@ -2762,4 +2765,6 @@ class TCP_Client__class
 
 
 }
+
+
 
