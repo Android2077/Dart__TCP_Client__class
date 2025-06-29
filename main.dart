@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
-import 'dart:typed_data';    //Нужен для "Uint8List"
+import 'dart:typed_data';    //для "Uint8List"
 
 import 'TCP_Client__class.dart';
 
