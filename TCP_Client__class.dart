@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:async';
 import 'dart:collection';
-import 'dart:typed_data';    //Нужен для "Uint8List"
+import 'dart:typed_data';    //для "Uint8List"
 
 
 
