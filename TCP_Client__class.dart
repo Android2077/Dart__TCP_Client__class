@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:async';
 import 'dart:collection';
-import 'dart:typed_data';    //для "Uint8List"
+import 'dart:typed_data';    //Нужен для "Uint8List"
 
 
 
@@ -2160,6 +2160,10 @@ class Socket_Struct
 
   //----------------------------------------------------------Private:--------------------------------------------------------------
 
+  //--------------------
+  bool _AccumulateBuffer_change = false;
+  bool _ReadUntill_change       = false;
+  //--------------------
 
   //------------------------------------
   bool _connect_flag = false;
@@ -2647,114 +2651,13 @@ class TCP_Client__class
       {
         //Значит нужно накапливать данные до тех пор, пока не найдем Пользовательский разделитель:
 
-        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Вычисляем начальный элемент во Входяем буффере с которого начнем поиск разделителя:Begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-        //Так как буффер накапливаемый, то нет никакого смысла искать разделитель каждый раз с начала буффера. Каждый раз с приходом новой порции данных, искать разделитель нужно с конца текущего буффера минус длинна разделителя.
-
-        int find_begin_index = (Socket_Struct_._Read__ReadUntill.size() - 1) - Socket_Struct_._Read__ReadUntill_seperator.length - 1;
-
-        if (find_begin_index < 0)
-        {
-          find_begin_index = 0;
-        }
-
-        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Вычисляем начальный элемент во Входяем буффере с которого начнем поиск разделителя:End~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-        Socket_Struct_._Read__ReadUntill.push_back(Incoming_data, Incoming_data.length); //Добавляем данные в Накапливаемый Буффер.
-
-
-        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Ищем разделитель:Begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-        request_struct_.pointer_to_subsrt = Socket_Struct_._Read__ReadUntill_seperator;
-        request_struct_.subsrt_size = Socket_Struct_._Read__ReadUntill_seperator.length;
-
-        vec_result_split_.length = 0;
-        final int result = Get_Split_PointerRanges_.get_vector_pointer__EndPointer(Socket_Struct_._Read__ReadUntill.get__Native_Uint8List_ref(), find_begin_index, Socket_Struct_._Read__ReadUntill.get__Native_Uint8List_ref().length - 1, request_struct_, vec_result_split_);
-
-        if (result > 0)
-        {
-          //Значит разделитель найден. result - это кол-во найденных разделённых подстрок: 1234$56$789 - разделенные подстроки это "1234", "56", "789". "$" - соотвтвенно сам разделитель.
-          //ВНИМАНИЕ: нам нужно отработать только первые "result - 1" Найденных подстрок. ТО ЕСТЬ к примеру разделитель это символ "$", сам буффер содержит такие данные: 1234$56$789 - то есть в буффере присутствует ДВА разделителя и ТРИ разделенные подстроки, ТРЕТЬЮ подстроку "789" мы не трогаем и Не сообщаем о ней Пользователю через колбек, так как для нее еще не пришел свой разделитель. Мы его оставляет в буффере для следящего накопления данных и поиска разделителя.
-
-          for (int i = 0; i < vec_result_split_.length - 1; i++)
-          {
-            //vec_result_split_[i].split_range_p  - номер элемета в буффере "Socket_Struct_._Read__ReadUntill" который указывает на разделенных данные До разделителя. Сообщим оь этом Пользователю.
-
-            Uint8List Uint8List_view = Socket_Struct_._Read__ReadUntill.get__View_Type_Uint8List(vec_result_split_[i].split_range_p, vec_result_split_[i].split_range_size); //Получаем указатель на часть данных, который идут перед разделителем, не включая сам разделитель.
-
-
-            //````````````````````````````````````````````````````````````````````
-            if (_User_Shared_lambda_for_Read != null)
-            {
-              _User_Shared_lambda_for_Read!(this, Socket_Struct_, Uint8List_view); //Вызываем Пользовательский колбек.
-            }
-
-            if (user_func_Read != null)
-            {
-              user_func_Read(this, Socket_Struct_, Uint8List_view);
-            }
-            //````````````````````````````````````````````````````````````````````
-
-          }
-
-
-          Socket_Struct_._Read__ReadUntill.erase_range(0, vec_result_split_.last.split_range_p - 1); //ТЕПЕРЬ Удалаяем все данные из Буффера вплоть до последнего разделитея в буффере.
-        }
-
-        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Ищем разделитель:End~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+        _ReadUntill_handler(false, Socket_Struct_, Incoming_data, user_func_Read);
       }
       else
       {
         //Значит нужно накапливать данные до тех пор, пока буффер не достигнет определенного размера:
 
-        Socket_Struct_._Read__AccumulateBuffer.push_back(Incoming_data, Incoming_data.length);        //Добавляем данные в Накапливаемый Буффер.
-
-        if(Socket_Struct_._Read__AccumulateBuffer.size() >= Socket_Struct_._Read__Accumulate_size)
-        {
-
-          //````````````````````````````````````````````````````````````````````````````````
-          int part_num = (Socket_Struct_._Read__AccumulateBuffer.size() / Socket_Struct_._Read__Accumulate_size).floor();   //Вычисляем число частей кратно "_Read__Accumulate_size" с округлением вниз, то есть сколько раз нужно вызвать колбек для оповещения Пользователя о частях "_Read__Accumulate_size" буффера.
-
-          for(int i = 0; i < part_num; i++ )
-          {
-
-            //Значит берем указатель-view на часть в размере "_Read__Accumulate_size" и вызываем Пользовательский колбек:
-
-            Uint8List Uint8List_view = Socket_Struct_._Read__AccumulateBuffer.get__View_Type_Uint8List((i*Socket_Struct_._Read__Accumulate_size), Socket_Struct_._Read__Accumulate_size); //Получаем указатель на часть данных
-
-
-            //````````````````````````````````````````````````````````````````````
-            if (_User_Shared_lambda_for_Read != null)
-            {
-              _User_Shared_lambda_for_Read!(this, Socket_Struct_, Uint8List_view); //Вызываем Пользовательский колбек.
-            }
-
-            if (user_func_Read != null)
-            {
-              user_func_Read(this, Socket_Struct_, Uint8List_view);
-            }
-            //````````````````````````````````````````````````````````````````````
-
-
-          }
-          //````````````````````````````````````````````````````````````````````````````````
-
-
-          //````````````````````````````````Удаляем данные, о которых уже опощен Пользователь:````````````````````````````````````
-          final tail_size = Socket_Struct_._Read__AccumulateBuffer.size() - part_num * Socket_Struct_._Read__Accumulate_size;    //Это размер буффера после того, как мы удалим данные с начала буффера в размере "_Read__Accumulate_size"
-
-          memcpy(Socket_Struct_._Read__AccumulateBuffer.get__Native_Uint8List_ref(), 0, Socket_Struct_._Read__AccumulateBuffer.get__Native_Uint8List_ref(), Socket_Struct_._Read__Accumulate_size, tail_size);
-
-          Socket_Struct_._Read__AccumulateBuffer.resize(tail_size);
-          //``````````````````````````````````````````````````````````````````````````````````````````````````````````````````````
-
-        }
-
-
-
-
+        _AccumulateBuffer_handler(false, Socket_Struct_, Incoming_data, user_func_Read);
       }
 
     }
@@ -2763,8 +2666,189 @@ class TCP_Client__class
 
   }
 
+  void _AccumulateBuffer_handler(bool RepeatCall_flag, Socket_Struct Socket_Struct_, Uint8List Incoming_data, Function(TCP_Client__class TCP_Client__class__ref, Socket_Struct Socket_Struct_ref, Uint8List data)? user_func_Read)
+  {
+
+    //---------------------------------------------------
+    if(Socket_Struct_._AccumulateBuffer_change == true)
+    {
+      Socket_Struct_._AccumulateBuffer_change = false;
+    }
+    //---------------------------------------------------
+
+    //---------------------------------------------------
+    if(RepeatCall_flag == false)
+    {
+      Socket_Struct_._Read__AccumulateBuffer.push_back(Incoming_data, Incoming_data.length);        //Добавляем данные в Накапливаемый Буффер.
+    }
+    //---------------------------------------------------
+
+
+
+    if(Socket_Struct_._Read__AccumulateBuffer.size() >= Socket_Struct_._Read__Accumulate_size)
+    {
+
+      final int Accumulate_size__Save = Socket_Struct_._Read__Accumulate_size;    //Сохраним значение на тот случай, если Пользователь изменить это значение из клобека вызвав "set__AccumulateBuffer_Size_for_Socket"
+
+      //````````````````````````````````````````````````````````````````````````````````
+      int part_num = (Socket_Struct_._Read__AccumulateBuffer.size() / Accumulate_size__Save).floor();   //Вычисляем число частей кратно "_Read__Accumulate_size" с округлением вниз, то есть сколько раз нужно вызвать колбек для оповещения Пользователя о частях "_Read__Accumulate_size" буффера.
+
+      for(int i = 0; i < part_num; i++ )
+      {
+
+        //Значит берем указатель-view на часть в размере "_Read__Accumulate_size" и вызываем Пользовательский колбек:
+
+        Uint8List Uint8List_view = Socket_Struct_._Read__AccumulateBuffer.get__View_Type_Uint8List((i*Accumulate_size__Save), Socket_Struct_._Read__Accumulate_size); //Получаем указатель на часть данных
+
+
+        //````````````````````````````````````````````````````````````````````
+        if (_User_Shared_lambda_for_Read != null)
+        {
+          _User_Shared_lambda_for_Read!(this, Socket_Struct_, Uint8List_view); //Вызываем Пользовательский колбек.
+        }
+
+        if (user_func_Read != null)
+        {
+          user_func_Read(this, Socket_Struct_, Uint8List_view);
+        }
+        //````````````````````````````````````````````````````````````````````
+
+        //--------------------------------------------------------------------
+        if(Socket_Struct_._AccumulateBuffer_change == true)
+        {
+          Socket_Struct_._AccumulateBuffer_change = false;
+
+          //Значит значение "_Read__Accumulate_size" было изменено из колбека, ЗНАЧИТ НУЖНО - Удалить данные из буффера "_Read__AccumulateBuffer", о которых уже оповещен Пользователь и начать анализ буффера сначала с уже новым "_Read__Accumulate_size".
+
+          //````````````````````````````````Удаляем данные, о которых уже оповещен Пользователь:````````````````````````````````````
+          final tail_size = Socket_Struct_._Read__AccumulateBuffer.size() - (i+1) * Accumulate_size__Save;    //Это размер буффера после того, как мы удалим данные с начала буффера в размере "_Read__Accumulate_size"
+
+          memcpy(Socket_Struct_._Read__AccumulateBuffer.get__Native_Uint8List_ref(), 0, Socket_Struct_._Read__AccumulateBuffer.get__Native_Uint8List_ref(), Accumulate_size__Save, tail_size);
+
+          Socket_Struct_._Read__AccumulateBuffer.resize(tail_size);
+          //``````````````````````````````````````````````````````````````````````````````````````````````````````````````````````
+
+          _AccumulateBuffer_handler(true, Socket_Struct_, Incoming_data, user_func_Read);  //Вызываем фукцию.
+
+          return;
+        }
+        //--------------------------------------------------------------------
+
+      }
+      //````````````````````````````````````````````````````````````````````````````````
+
+
+      //````````````````````````````````Удаляем данные, о которых уже оповещен Пользователь:````````````````````````````````````
+      final tail_size = Socket_Struct_._Read__AccumulateBuffer.size() - part_num * Accumulate_size__Save;    //Это размер буффера после того, как мы удалим данные с начала буффера в размере "_Read__Accumulate_size"
+
+      memcpy(Socket_Struct_._Read__AccumulateBuffer.get__Native_Uint8List_ref(), 0, Socket_Struct_._Read__AccumulateBuffer.get__Native_Uint8List_ref(), Accumulate_size__Save, tail_size);
+
+      Socket_Struct_._Read__AccumulateBuffer.resize(tail_size);
+      //``````````````````````````````````````````````````````````````````````````````````````````````````````````````````````
+
+    }
+
+  }
+
+  void _ReadUntill_handler(bool RepeatCall_flag, Socket_Struct Socket_Struct_, Uint8List Incoming_data, Function(TCP_Client__class TCP_Client__class__ref, Socket_Struct Socket_Struct_ref, Uint8List data)? user_func_Read)
+  {
+
+    //Значит нужно накапливать данные до тех пор, пока не найдем Пользовательский разделитель:
+
+
+    //---------------------------------------------------
+    if(Socket_Struct_._ReadUntill_change == true)
+    {
+      Socket_Struct_._ReadUntill_change = false;
+    }
+    //---------------------------------------------------
+
+
+
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Вычисляем начальный элемент во Входяем буффере с которого начнем поиск разделителя:Begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    //Так как буффер накапливаемый, то нет никакого смысла искать разделитель каждый раз с начала буффера. Каждый раз с приходом новой порции данных, искать разделитель нужно с конца текущего буффера минус длинна разделителя.
+
+    int find_begin_index = (Socket_Struct_._Read__ReadUntill.size() - 1) - Socket_Struct_._Read__ReadUntill_seperator.length - 1;
+
+    if (find_begin_index < 0)
+    {
+      find_begin_index = 0;
+    }
+
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Вычисляем начальный элемент во Входяем буффере с которого начнем поиск разделителя:End~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+    //---------------------------------------------------
+    if(RepeatCall_flag == false)
+    {
+      Socket_Struct_._Read__ReadUntill.push_back(Incoming_data, Incoming_data.length); //Добавляем данные в Накапливаемый Буффер.
+    }
+    //---------------------------------------------------
+
+
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Ищем разделитель:Begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    request_struct_.pointer_to_subsrt = Socket_Struct_._Read__ReadUntill_seperator;
+    request_struct_.subsrt_size       = Socket_Struct_._Read__ReadUntill_seperator.length;
+
+    vec_result_split_.length = 0;
+    final int result = Get_Split_PointerRanges_.get_vector_pointer__EndPointer(Socket_Struct_._Read__ReadUntill.get__Native_Uint8List_ref(), find_begin_index, Socket_Struct_._Read__ReadUntill.get__Native_Uint8List_ref().length - 1, request_struct_, vec_result_split_);
+
+    if (result > 0)
+    {
+      //Значит разделитель найден. result - это кол-во найденных разделённых подстрок: 1234$56$789 - разделенные подстроки это "1234", "56", "789". "$" - соотвтвенно сам разделитель.
+      //ВНИМАНИЕ: нам нужно отработать только первые "result - 1" Найденных подстрок. ТО ЕСТЬ к примеру разделитель это символ "$", сам буффер содержит такие данные: 1234$56$789 - то есть в буффере присутствует ДВА разделителя и ТРИ разделенные подстроки, ТРЕТЬЮ подстроку "789" мы не трогаем и Не сообщаем о ней Пользователю через колбек, так как для нее еще не пришел свой разделитель. Мы его оставляет в буффере для следящего накопления данных и поиска разделителя.
+
+      for (int i = 0; i < vec_result_split_.length - 1; i++)
+      {
+        //vec_result_split_[i].split_range_p  - номер элемента в буффере "Socket_Struct_._Read__ReadUntill" который указывает на разделенных данные До разделителя. Сообщим оь этом Пользователю.
+
+        Uint8List Uint8List_view = Socket_Struct_._Read__ReadUntill.get__View_Type_Uint8List(vec_result_split_[i].split_range_p, vec_result_split_[i].split_range_size); //Получаем указатель на часть данных, который идут перед разделителем, не включая сам разделитель.
+
+
+        //````````````````````````````````````````````````````````````````````
+        if (_User_Shared_lambda_for_Read != null)
+        {
+          _User_Shared_lambda_for_Read!(this, Socket_Struct_, Uint8List_view); //Вызываем Пользовательский колбек.
+        }
+
+        if (user_func_Read != null)
+        {
+          user_func_Read(this, Socket_Struct_, Uint8List_view);
+        }
+        //````````````````````````````````````````````````````````````````````
+
+
+        //--------------------------------------------------------------------
+        if(Socket_Struct_._ReadUntill_change == true)
+        {
+          Socket_Struct_._ReadUntill_change = false;
+
+          //Значит значение "_Read__ReadUntill_seperator" было изменено из колбека, ЗНАЧИТ НУЖНО - Удалить данные из буффера "_Read__ReadUntill", о которых уже оповещен Пользователь и начать анализ буффера сначала с уже новым "_Read__ReadUntill_seperator".
+
+          //````````````````````````````````Удаляем данные, о которых уже оповещен Пользователь:````````````````````````````````````
+          Socket_Struct_._Read__ReadUntill.erase_range(0, vec_result_split_[i].split_range_p - 1);
+          //``````````````````````````````````````````````````````````````````````````````````````````````````````````````````````
+
+          _ReadUntill_handler(true, Socket_Struct_, Incoming_data, user_func_Read);  //Вызываем фукцию.
+
+          return;
+        }
+        //--------------------------------------------------------------------
+
+
+      }
+
+
+      Socket_Struct_._Read__ReadUntill.erase_range(0, vec_result_split_.last.split_range_p - 1); //ТЕПЕРЬ Удалаяем все данные из Буффера вплоть до последнего разделитея в буффере.
+    }
+
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Ищем разделитель:End~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  }
+
 
 }
-
 
 
